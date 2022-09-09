@@ -1,15 +1,15 @@
 import os
 import sys
 import numpy as np
+import comtypes.client
+import pandas as pd
 """
-本程序可用于舒适度分析的前处理，包括改模型单位、改楼板类型为薄板（非膜）、改楼板弹模、改质量源、改活载数值、改插入点偏移
+本程序可用于舒适度分析的前处理，包括改模型单位、改楼板类型为薄板（非膜）、改楼板弹模、改质量源、改活载数值、改插入点偏移、
 设置稳态工况、设置单点行人荷载工况、竖向人群荷载工况、设置横向人群荷载工况，但仍需手动操作的是支座约束施加
 本程序适用于平面的楼盖、吊桥、连廊（插入点偏移的对象仅选中了某XY平面）
 输入参数包括楼板截面名称、板厚、活载数值、弹模放大系数、最不利作用点集合、阻尼比、楼面面积，并需检查楼板支座的设置情况。
-编写： 林晨豪 时间：20220910
+编写： 林晨豪   时间：20220909
 """
-import comtypes.client
-import pandas as pd
 # create API helper object
 helper = comtypes.client.CreateObject('SAP2000v1.Helper')
 helper = helper.QueryInterface(comtypes.gen.SAP2000v1.cHelper)
