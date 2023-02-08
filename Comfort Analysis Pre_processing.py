@@ -2,7 +2,7 @@ import os
 import sys
 import numpy as np
 import comtypes.client
-import pandas as pd
+
 """
 本程序可用于舒适度分析的前处理，包括改模型单位、改楼板类型为薄板（非膜）、改楼板弹模、改质量源、改活载数值、改插入点偏移、
 设置稳态工况、设置单点行人荷载工况、竖向人群荷载工况、设置横向人群荷载工况，但仍需手动操作的是支座约束施加
@@ -18,13 +18,13 @@ mySapObject = helper.GetObject("CSI.SAP2000.API.SapObject")
 SapModel = mySapObject.SapModel
 
 # 输入参数
-PlateSectionName = "TM120C30F"  # 楼板截面名称
+PlateSectionName = "TM120C30"  # 楼板截面名称
 plate_thickness = 0.12  # m 板厚
 LiveLoad = 0.5          # 恒载按照YJK模型数据施加，面上活载室内楼盖0.5kN/m2，连廊和室内天桥0.35kN/m2
 E_factor = 1.35         # 楼板弹模放大系数，1.35钢-混凝土组合楼盖，1.2钢筋混凝土楼盖
-Disadvantage_PintTag = [2003452]       # 最不利点集合
+Disadvantage_PintTag = [3000595, 3000593, 3000591, 3000592, 3000594, 3000596]       # 最不利点集合
 kesi = 0.02              # 连廊、天桥：钢-混凝土楼盖0.01，钢楼盖0.005，混凝土楼板，0.05；楼盖：混凝土0.05，钢-混凝土0.02~0.05
-Area = 9072              # 楼面面积，用于计算人群密度，单位m2
+Area = 453.57            # 楼面面积，用于计算人群密度，单位m2
 LatDirection = 'Y'       # 横向水平力作用方向
 # Calculate Crow_tense
 Crow_tense = 10.8*np.sqrt(0.5*kesi/Area)
@@ -60,12 +60,12 @@ ret = SapModel.SelectObj.PropertyArea(PlateSectionName, True)
 print("Change live load completed!")
 
 # Change the beam insertionPoint
-ret = SapModel.SelectObj.PlaneXY(str(Disadvantage_PintTag[0]))
-Offset1 = [0, 0, 0]
-Offset2 = [0, 0, 0]
-ItemType = 2
-ret = SapModel.FrameObj.SetInsertionPoint("Ignore", 8, False, False, Offset1, Offset2, 'Local', ItemType)
-ret = SapModel.SelectObj.PlaneXY(str(Disadvantage_PintTag[0]), True)
+# ret = SapModel.SelectObj.PlaneXY(str(Disadvantage_PintTag[0]))
+# Offset1 = [0, 0, 0]
+# Offset2 = [0, 0, 0]
+# ItemType = 2
+# ret = SapModel.FrameObj.SetInsertionPoint("Ignore", 8, False, False, Offset1, Offset2, 'Local', ItemType)
+# ret = SapModel.SelectObj.PlaneXY(str(Disadvantage_PintTag[0]), True)
 # Check Support
 Boundary_Condition_Confirm = input("检查支座边界是否设置完毕，输入数字1表示完成：")
 
@@ -116,6 +116,8 @@ Walking_Frqs = [round(x, 2) for x in Walking_Frqs]
 Wakling_dt = [1/72/x for x in Walking_Frqs]
 Waling_n = len(Walking_Frqs)
 ret = SapModel.LoadPatterns.Add("Walking", 8)
+Value = [0, 0, -1, 0, 0, 0]
+ret = SapModel.PointObj.SetLoadForce("PointsGroup", "Walking", Value, True, "Global", 1)
 for frq in Walking_Frqs:
     NumberItems = 601
     MyTime = [0.025*x for x in range(0,  NumberItems, 1)]

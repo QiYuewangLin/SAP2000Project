@@ -1,6 +1,5 @@
 import os
 import sys
-
 import matplotlib
 import numpy as np
 import comtypes.client
@@ -9,7 +8,7 @@ import matplotlib.pyplot as plt
 本程序可用于舒适度分析的后处理，包括改模型单位、提取输出不利点稳态分析、行人荷载结果、竖向人群荷载结果和横向人群荷载结果、绘图并保存
 本程序目前适用于单点的所有舒适度结果后处理，若有多点需求后续可补充
 输入参数包括图片结果的保存路径、横向水平力作用方向。
-编写： 林晨豪   修改时间：20220913
+编写： 林晨豪   修改时间：20230208
 """
 
 # create API helper object
@@ -23,30 +22,31 @@ ret = SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
 ret = SapModel.SetPresentUnits(6)
 
 # Save path of output
-savepath = 'C:\\Users\\Lenovo\\Desktop'
+savepath = 'E:\\工程项目\\绵阳科技城新区科技大会堂\\SAP2000模型\\舒适度分析'
 savepath += '\\稳态分析结果'
 if not os.path.exists(savepath):
     os.mkdir(savepath)
 # LatDirection
 LatDirection = 'Y'       # 横向水平力作用方向
+[NumberItems, ObjectType, ObjectName, Remark]= SapModel.GroupDef.GetAssignments("PointsGroup")
 
 ##########################
 #  Steady-state analysis #
 ##########################
-# ret = SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
-# ret = SapModel.Results.Setup.SetCaseSelectedForOutput("Steady_Sate")
-# ret = SapModel.Results.Setup.SetOptionSteadyState(2, 3)
-# [NumberResults, Obj, Elm, LoadCase,
-# StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointDispl("PointsGroup", 2)
-#
-# pos = [i for i in range(0, NumberResults) if StepType[i] == 'Mag at Freq']
-# plt.figure(1)
-# plt.plot(StepNum[pos[0]:(pos[-1]+1)], U3[pos[0]:(pos[-1]+1)])
-# plt.title(f'稳态分析节点{Obj}的位移时程曲线', fontproperties='SimSun', fontsize=15)
-# plt.xlabel('频率(Hz)', fontproperties='SimSun', fontsize=15)
-# plt.ylabel('位移(m)', fontproperties='SimSun', fontsize=15)
-# plt.tight_layout()
-# plt.savefig(f'{savepath}\\稳态分析节点{Obj}的位移时程曲线.tiff')
+ret = SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
+ret = SapModel.Results.Setup.SetCaseSelectedForOutput("Steady_Sate")
+ret = SapModel.Results.Setup.SetOptionSteadyState(2, 3)
+[NumberResults, Obj, Elm, LoadCase,
+StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointDispl(ObjectName[0], 0)  # 仅输出一个点
+
+pos = [i for i in range(0, NumberResults) if StepType[i] == 'Mag at Freq']
+plt.figure(1)
+plt.plot(StepNum[pos[0]:(pos[-1]+1)], U3[pos[0]:(pos[-1]+1)])
+plt.title(f'稳态分析节点{Obj[0]}的频率-竖向位移曲线', fontproperties='SimSun', fontsize=15)
+plt.xlabel('频率(Hz)', fontproperties='SimSun', fontsize=15)
+plt.ylabel('位移(m)', fontproperties='SimSun', fontsize=15)
+plt.tight_layout()
+plt.savefig(f'{savepath}\\稳态分析节点{Obj[0]}的位移时程曲线.tiff')
 
 ##########################
 #  Walking analysis     #
@@ -60,7 +60,7 @@ for frq in Walking_Frqs:
 nn = len(Walking_Frqs)
 
 [NumberResults, Obj, Elm, LoadCase,
- StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs("PointsGroup", 2)
+ StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs(ObjectName[0], 0)
 
 Acc = []
 for n in range(0, nn):
@@ -88,7 +88,7 @@ ret = SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
 ret = SapModel.Results.Setup.SetOptionModalHist(2)
 ret = SapModel.Results.Setup.SetCaseSelectedForOutput(f'Walking{Frq_max}')
 [NumberResults, Obj, Elm, LoadCase,
- StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs("PointsGroup", 2)
+ StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs(ObjectName[0], 0)
 plt.figure(3)
 plt.plot(StepNum, U3)
 plt.title(f'行人荷载作用下节点{Obj[0]}竖向加速度时程图（{Frq_max}Hz）', fontproperties='SimSun', fontsize=15)
@@ -117,7 +117,7 @@ for frq in VerCrowd_Frqs:
 nn = len(VerCrowd_Frqs)
 
 [NumberResults, Obj, Elm, LoadCase,
- StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs("PointsGroup", 2)
+ StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs(ObjectName[0], 0)
 
 Acc = []
 for n in range(0, nn):
@@ -145,7 +145,7 @@ ret = SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
 ret = SapModel.Results.Setup.SetOptionModalHist(2)
 ret = SapModel.Results.Setup.SetCaseSelectedForOutput(f'VerCrowd{Frq_max}')
 [NumberResults, Obj, Elm, LoadCase,
- StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs("PointsGroup", 2)
+ StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs(ObjectName[0], 0)
 plt.figure(5)
 plt.plot(StepNum, U3)
 plt.title(f'竖向人群荷载作用下节点{Obj[0]}竖向加速度时程图（{Frq_max}Hz）', fontproperties='SimSun', fontsize=15)
@@ -173,7 +173,7 @@ for frq in LatCrowd_Frqs:
 nn = len(LatCrowd_Frqs)
 
 [NumberResults, Obj, Elm, LoadCase,
- StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs("PointsGroup", 2)
+ StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs(ObjectName[0], 0)
 
 Acc = []
 for n in range(0, nn):
@@ -204,7 +204,7 @@ ret = SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
 ret = SapModel.Results.Setup.SetOptionModalHist(2)
 ret = SapModel.Results.Setup.SetCaseSelectedForOutput(f'LatCrowd{Frq_max}')
 [NumberResults, Obj, Elm, LoadCase,
- StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs("PointsGroup", 2)
+ StepType, StepNum, U1, U2, U3, R1, R2, R3, Remark] = SapModel.Results.JointAccAbs(ObjectName[0], 0)
 plt.figure(7)
 if LatDirection == 'X':
     plt.plot(StepNum, U1)

@@ -10,7 +10,7 @@ helper = helper.QueryInterface(comtypes.gen.SAP2000v1.cHelper)
 # Get SapObject
 mySapObject = helper.GetObject("CSI.SAP2000.API.SapObject")
 SapModel = mySapObject.SapModel
-path = r'G:\\重庆会堂波速模型计算\\'
+path = r'E:\工程项目\绵阳科技城新区科技大会堂\SAP2000模型\时程分析\\'
 #######################################################
 # 0.Note: follow items should be checked before run !!#
 #######################################################
@@ -25,8 +25,10 @@ path = r'G:\\重庆会堂波速模型计算\\'
 #####################################################################
 # 1.Define Model Linear History Time LoadCases (Uniform Excitation) #
 #####################################################################
-Waves = ['RSN6969_DARFIELD_SMTCN', 'RSN1491_CHICHI_TCU05', 'Artwave-1']  # Wave names
-myDamping = 0.03  # Constant Damping , should be checked
+Waves = ['Artwave-1', 'Artwave-2', 'RSN15_KERN_TAF_1','RSN316_WESMORL_PTS_2',
+         'RSN594_AuSableForks02_04_20_NE_EMMW__2','RSN331_COALINGA_H_H_C05_2','RSN6897_DARFIELD_DSLCN_2'
+         'RSN6975_DARFIELD_TPLCN_1','RSN55_SFERN_BVP_2','RSN8164_DUZCE_487_1']  # Wave names
+myDamping = 0.04  # Constant Damping , should be checked
 for wave in Waves:
     # Define History-Time Function from file (Acceleration)
     ret = SapModel.Func.FuncTH.SetFromFile_1(wave+'_X', path + wave + '_X.txt', 0, 0, 1, 2, True)
@@ -67,85 +69,85 @@ for wave in Waves:
 ############################################################################
 # 2.Define Model Linear History Time LoadCases  (Multi-Support Excitation) #
 ############################################################################
-dS = 51000  # m
-Vel = 800  # wave velocity 800m/s
-T1, T2, Dampd1, Dampd2 = 0.8, 0.08, 0.03, 0.03
-# T2要取到后面周期
-for angle in [0]:  # Unit has been changed 60/360*2*pi in cos()
-    for wave in Waves:
-        # Define History-Time Function from file (Displacement)
-        ret = SapModel.Func.FuncTH.SetFromFile_1(wave + '_UX', path + wave + '_UX.txt', 0, 0, 1, 2, True)
-        ret = SapModel.Func.FuncTH.SetFromFile_1(wave + '_UY', path + wave + '_UY.txt', 0, 0, 1, 2, True)
-        ret = SapModel.Func.FuncTH.SetFromFile_1(wave + '_UZ', path + wave + '_UZ.txt', 0, 0, 1, 2, True)
-        [NumberItems, MyTime, Value, Remark] = SapModel.Func.GetValues(wave+'_UX')
-
-        # Define BaseMotionGroup
-        # 1. Get the Coordinates of Supported Points and calculate the relative coordinates Si
-        DOF = ["True"]*6
-        ret = SapModel.SelectObj.SupportedPoints(DOF)
-        [NumberNames, MyName, Remarks] = SapModel.PointObj.GetNameList()
-        TagSelected_Point = []
-        for PointTag in MyName:
-            [sta, Remarks] = SapModel.PointObj.GetSelected(PointTag, "Selected")
-            if sta:
-                TagSelected_Point.append(PointTag)
-        S_dic = dict()
-        for PointTag in TagSelected_Point:
-            [x, y, z, Remarks] = SapModel.PointObj.GetCoordCartesian(PointTag)
-            S_dic[PointTag] = x*np.cos(angle/360*2*np.pi) + y*np.sin(angle/360*2*np.pi)
-        KeyTag = sorted(S_dic, key=S_dic.__getitem__)
-        S_total = S_dic[KeyTag[-1]]-S_dic[KeyTag[0]]
-        BMGroupNum = math.ceil((S_total+0.1)/dS)
-        # 2.Define Empty BaseMotionGroup and Load Pattern
-        for k in range(1, BMGroupNum + 1):
-            ret = SapModel.LoadPatterns.Add(f"Basmotion_UX_{k}_{angle}", 8, 0, False)  # LTYPE_OTHER = 8
-            ret = SapModel.LoadPatterns.Add(f"Basmotion_UY_{k}_{angle}", 8, 0, False)  # LTYPE_OTHER = 8
-            ret = SapModel.LoadPatterns.Add(f"Basmotion_UZ_{k}_{angle}", 8, 0, False)  # LTYPE_OTHER = 8
-
-        for k in range(1, BMGroupNum + 1):
-            ret = SapModel.GroupDef.SetGroup(f"ExcitaionGroup{k}_{angle}")
-            ret = SapModel.GroupDef.Clear(f"ExcitaionGroup{k}_{angle}")        # removes all assignments from the specified group
-        # 3.Assign joint to BaseMotionGroup and apply Load Pattern
-        for PointTag in TagSelected_Point:
-            n_Group = math.ceil((S_dic[PointTag]+0.1-S_dic[KeyTag[0]])/dS)
-            ret = SapModel.PointObj.SetGroupAssign(PointTag, f"ExcitaionGroup{n_Group}_{angle}")
-            Value = [0]*6
-            Value[0] = 1  # U1 = 1
-            ret = SapModel.PointObj.SetLoadDispl(PointTag, f"Basmotion_UX_{n_Group}_{angle}", Value, True, "Global")
-            Value = [0]*6
-            Value[1] = 1  # U2 = 1
-            ret = SapModel.PointObj.SetLoadDispl(PointTag, f"Basmotion_UY_{n_Group}_{angle}", Value, True, "Global")
-            Value = [0]*6
-            Value[2] = 1  # U3 = 1
-            ret = SapModel.PointObj.SetLoadDispl(PointTag, f"Basmotion_UZ_{n_Group}_{angle}", Value, True, "Global")
-
-        # Set CaseName
-        for direcID in ['X', 'Y']:
-            MyCaseName = f"{wave}_{direcID}_{angle}_Multi_Exc"
-            ret = SapModel.LoadCases.DirHistLinear.SetCase(MyCaseName)
-            # Set the proportional modal damping by period    CaseName, DampType, Da, Db, T1, T2, Dampd1, Dampd2)
-            ret = SapModel.LoadCases.DirHistLinear.SetDampProportional(MyCaseName, 2, 1, 1, T1, T2, Dampd1, Dampd2)
-            # Set Loads
-            MyLoadType = ["Load"]*BMGroupNum*3
-            MyLoadName = [f"Basmotion_{m}_{str(n + 1)}_{angle}" for n in range(0, BMGroupNum) for m in ["UX", "UY", "UZ"]]
-            if direcID == "X":
-                MyFunc = [wave + '_UX', wave + '_UY', wave + '_UZ']*BMGroupNum
-            elif direcID == "Y":
-                MyFunc = [wave + '_UY', wave + '_UX', wave + '_UZ'] * BMGroupNum
-            MySF = [1]*BMGroupNum*3  # MySF useless when Load Type item is not Accel !!!
-            MyTF = [1]*BMGroupNum*3
-            # Calculate Arrive Time
-            DT = dS/1000/Vel
-            time = np.linspace(0, (BMGroupNum - 1) * DT, BMGroupNum)
-            MyAT = sorted(list(time)*3)
-            MyCSys = ["Global"]*BMGroupNum*3   # MyCSys useless when Load Type item is not Accel !!!
-            MyAng = [0]*BMGroupNum*3           # Angle useless when Load Type item is not Accel !!!
-
-            ret = SapModel.LoadCases.DirHistLinear.SetLoads(MyCaseName, 3*BMGroupNum, MyLoadType, MyLoadName, MyFunc, MySF, MyTF,
-                                                            MyAT, MyCSys, MyAng)
-            # Set TimeSteps
-            Total_NumberItems = NumberItems + (BMGroupNum - 1) * DT / (MyTime[1] - MyTime[0])
-            ret = SapModel.LoadCases.DirHistLinear.SetTimeStep(MyCaseName, int(Total_NumberItems), MyTime[1] - MyTime[0])
+# dS = 51000  # m
+# Vel = 800  # wave velocity 800m/s
+# T1, T2, Dampd1, Dampd2 = 0.8, 0.08, 0.03, 0.03
+# # T2要取到后面周期
+# for angle in [0]:  # Unit has been changed 60/360*2*pi in cos()
+#     for wave in Waves:
+#         # Define History-Time Function from file (Displacement)
+#         ret = SapModel.Func.FuncTH.SetFromFile_1(wave + '_UX', path + wave + '_UX.txt', 0, 0, 1, 2, True)
+#         ret = SapModel.Func.FuncTH.SetFromFile_1(wave + '_UY', path + wave + '_UY.txt', 0, 0, 1, 2, True)
+#         ret = SapModel.Func.FuncTH.SetFromFile_1(wave + '_UZ', path + wave + '_UZ.txt', 0, 0, 1, 2, True)
+#         [NumberItems, MyTime, Value, Remark] = SapModel.Func.GetValues(wave+'_UX')
+#
+#         # Define BaseMotionGroup
+#         # 1. Get the Coordinates of Supported Points and calculate the relative coordinates Si
+#         DOF = ["True"]*6
+#         ret = SapModel.SelectObj.SupportedPoints(DOF)
+#         [NumberNames, MyName, Remarks] = SapModel.PointObj.GetNameList()
+#         TagSelected_Point = []
+#         for PointTag in MyName:
+#             [sta, Remarks] = SapModel.PointObj.GetSelected(PointTag, "Selected")
+#             if sta:
+#                 TagSelected_Point.append(PointTag)
+#         S_dic = dict()
+#         for PointTag in TagSelected_Point:
+#             [x, y, z, Remarks] = SapModel.PointObj.GetCoordCartesian(PointTag)
+#             S_dic[PointTag] = x*np.cos(angle/360*2*np.pi) + y*np.sin(angle/360*2*np.pi)
+#         KeyTag = sorted(S_dic, key=S_dic.__getitem__)
+#         S_total = S_dic[KeyTag[-1]]-S_dic[KeyTag[0]]
+#         BMGroupNum = math.ceil((S_total+0.1)/dS)
+#         # 2.Define Empty BaseMotionGroup and Load Pattern
+#         for k in range(1, BMGroupNum + 1):
+#             ret = SapModel.LoadPatterns.Add(f"Basmotion_UX_{k}_{angle}", 8, 0, False)  # LTYPE_OTHER = 8
+#             ret = SapModel.LoadPatterns.Add(f"Basmotion_UY_{k}_{angle}", 8, 0, False)  # LTYPE_OTHER = 8
+#             ret = SapModel.LoadPatterns.Add(f"Basmotion_UZ_{k}_{angle}", 8, 0, False)  # LTYPE_OTHER = 8
+#
+#         for k in range(1, BMGroupNum + 1):
+#             ret = SapModel.GroupDef.SetGroup(f"ExcitaionGroup{k}_{angle}")
+#             ret = SapModel.GroupDef.Clear(f"ExcitaionGroup{k}_{angle}")        # removes all assignments from the specified group
+#         # 3.Assign joint to BaseMotionGroup and apply Load Pattern
+#         for PointTag in TagSelected_Point:
+#             n_Group = math.ceil((S_dic[PointTag]+0.1-S_dic[KeyTag[0]])/dS)
+#             ret = SapModel.PointObj.SetGroupAssign(PointTag, f"ExcitaionGroup{n_Group}_{angle}")
+#             Value = [0]*6
+#             Value[0] = 1  # U1 = 1
+#             ret = SapModel.PointObj.SetLoadDispl(PointTag, f"Basmotion_UX_{n_Group}_{angle}", Value, True, "Global")
+#             Value = [0]*6
+#             Value[1] = 1  # U2 = 1
+#             ret = SapModel.PointObj.SetLoadDispl(PointTag, f"Basmotion_UY_{n_Group}_{angle}", Value, True, "Global")
+#             Value = [0]*6
+#             Value[2] = 1  # U3 = 1
+#             ret = SapModel.PointObj.SetLoadDispl(PointTag, f"Basmotion_UZ_{n_Group}_{angle}", Value, True, "Global")
+#
+#         # Set CaseName
+#         for direcID in ['X', 'Y']:
+#             MyCaseName = f"{wave}_{direcID}_{angle}_Multi_Exc"
+#             ret = SapModel.LoadCases.DirHistLinear.SetCase(MyCaseName)
+#             # Set the proportional modal damping by period    CaseName, DampType, Da, Db, T1, T2, Dampd1, Dampd2)
+#             ret = SapModel.LoadCases.DirHistLinear.SetDampProportional(MyCaseName, 2, 1, 1, T1, T2, Dampd1, Dampd2)
+#             # Set Loads
+#             MyLoadType = ["Load"]*BMGroupNum*3
+#             MyLoadName = [f"Basmotion_{m}_{str(n + 1)}_{angle}" for n in range(0, BMGroupNum) for m in ["UX", "UY", "UZ"]]
+#             if direcID == "X":
+#                 MyFunc = [wave + '_UX', wave + '_UY', wave + '_UZ']*BMGroupNum
+#             elif direcID == "Y":
+#                 MyFunc = [wave + '_UY', wave + '_UX', wave + '_UZ'] * BMGroupNum
+#             MySF = [1]*BMGroupNum*3  # MySF useless when Load Type item is not Accel !!!
+#             MyTF = [1]*BMGroupNum*3
+#             # Calculate Arrive Time
+#             DT = dS/1000/Vel
+#             time = np.linspace(0, (BMGroupNum - 1) * DT, BMGroupNum)
+#             MyAT = sorted(list(time)*3)
+#             MyCSys = ["Global"]*BMGroupNum*3   # MyCSys useless when Load Type item is not Accel !!!
+#             MyAng = [0]*BMGroupNum*3           # Angle useless when Load Type item is not Accel !!!
+#
+#             ret = SapModel.LoadCases.DirHistLinear.SetLoads(MyCaseName, 3*BMGroupNum, MyLoadType, MyLoadName, MyFunc, MySF, MyTF,
+#                                                             MyAT, MyCSys, MyAng)
+#             # Set TimeSteps
+#             Total_NumberItems = NumberItems + (BMGroupNum - 1) * DT / (MyTime[1] - MyTime[0])
+#             ret = SapModel.LoadCases.DirHistLinear.SetTimeStep(MyCaseName, int(Total_NumberItems), MyTime[1] - MyTime[0])
 
 ####################
 # 3.Define  Output #
