@@ -10,7 +10,7 @@ helper = helper.QueryInterface(comtypes.gen.SAP2000v1.cHelper)
 # Get SapObject
 mySapObject = helper.GetObject("CSI.SAP2000.API.SapObject")
 SapModel = mySapObject.SapModel
-path = r'E:\工程项目\绵阳科技城新区科技大会堂\SAP2000模型\时程分析\\'
+path = r'E:\\工程项目\\绵阳科技城新区科技大会堂\\SAP2000模型\\时程分析\\时程分析\\'
 #######################################################
 # 0.Note: follow items should be checked before run !!#
 #######################################################
@@ -25,10 +25,14 @@ path = r'E:\工程项目\绵阳科技城新区科技大会堂\SAP2000模型\时�
 #####################################################################
 # 1.Define Model Linear History Time LoadCases (Uniform Excitation) #
 #####################################################################
-Waves = ['Artwave-1', 'Artwave-2', 'RSN15_KERN_TAF_1','RSN316_WESMORL_PTS_2',
-         'RSN594_AuSableForks02_04_20_NE_EMMW__2','RSN331_COALINGA_H_H_C05_2','RSN6897_DARFIELD_DSLCN_2'
-         'RSN6975_DARFIELD_TPLCN_1','RSN55_SFERN_BVP_2','RSN8164_DUZCE_487_1']  # Wave names
+Waves = ['Artwave-1', 'Artwave-2', 'RSN15_KERN_TAF_1', 'RSN316_WESMORL_PTS_2',
+         'RSN594_AuSableForks02_04_20_NE_EMMW__2', 'RSN6897_DARFIELD_2', 'RSN3746_CAPEMEND_CBF_1'
+         ]  # Wave names
 myDamping = 0.04  # Constant Damping , should be checked
+
+# Change the units to N mm
+ret = SapModel.SetPresentUnits(9)
+
 for wave in Waves:
     # Define History-Time Function from file (Acceleration)
     ret = SapModel.Func.FuncTH.SetFromFile_1(wave+'_X', path + wave + '_X.txt', 0, 0, 1, 2, True)
